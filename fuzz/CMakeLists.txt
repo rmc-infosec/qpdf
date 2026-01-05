@@ -12,6 +12,7 @@ set(FUZZERS
   dct_fuzzer
   flate_fuzzer
   hex_fuzzer
+  job_fuzzer
   json_fuzzer
   lzw_fuzzer
   pngpredictor_fuzzer

@@ -18,6 +18,7 @@ my @fuzzers = (
     ['dct' => 4],
     ['flate' => 1],
     ['hex' => 1],
+    ['job' => 16],
     ['json' => 40],
     ['lzw' => 2],
     ['pngpredictor' => 1],

@@ -166,7 +166,8 @@ namespace qpdf::impl
             std::set<QPDFObjGen>& old_fields,
             QPDFMatrix const& cm,
             QPDF* from_qpdf,
-            AcroForm* from_afdh);
+            AcroForm* from_afdh,
+            QPDFObjectHandle* new_page);
 
         // Copy form fields and annotations from one page to another, allowing the from page to be
         // in a different QPDF or in the same QPDF. This would typically be called after calling
@@ -769,8 +770,6 @@ namespace qpdf::impl
         void setRadioButtonValue(QPDFObjectHandle name);
         void setCheckBoxValue(bool value);
         void generateTextAppearance(QPDFAnnotationObjectHelper&);
-        QPDFObjectHandle
-        getFontFromResource(QPDFObjectHandle resources, std::string const& font_name);
 
         static const QPDFObjectHandle null_oh;
     }; // class FormNode

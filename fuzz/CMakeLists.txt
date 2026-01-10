@@ -8,6 +8,7 @@ set(FUZZERS
   qpdf_lin_fuzzer
   qpdf_pages_fuzzer
   qpdf_outlines_fuzzer
+  annot_fuzzer
   ascii85_fuzzer
   dct_fuzzer
   flate_fuzzer

@@ -11,6 +11,7 @@ set(FUZZERS
   annot_fuzzer
   ascii85_fuzzer
   dct_fuzzer
+  embed_fuzzer
   flate_fuzzer
   hex_fuzzer
   json_fuzzer

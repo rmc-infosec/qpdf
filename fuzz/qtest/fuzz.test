@@ -17,6 +17,7 @@ my @fuzzers = (
     ['annot' => 23],
     ['ascii85' => 1],
     ['dct' => 4],
+    ['embed' => 7],
     ['flate' => 1],
     ['hex' => 1],
     ['json' => 40],

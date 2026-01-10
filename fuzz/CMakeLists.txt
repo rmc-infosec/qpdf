@@ -18,6 +18,7 @@ set(FUZZERS
   json_fuzzer
   linearization_fuzzer
   lzw_fuzzer
+  object_fuzzer
   pngpredictor_fuzzer
   runlength_fuzzer
   tiffpredictor_fuzzer

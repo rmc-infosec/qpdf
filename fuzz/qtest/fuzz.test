@@ -24,6 +24,7 @@ my @fuzzers = (
     ['json' => 40],
     ['linearization' => 20],
     ['lzw' => 2],
+    ['object' => 30],
     ['pngpredictor' => 1],
     ['runlength' => 6],
     ['tiffpredictor' => 2],

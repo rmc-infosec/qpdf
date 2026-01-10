@@ -22,6 +22,7 @@ my @fuzzers = (
     ['hex' => 1],
     ['job' => 16],
     ['json' => 40],
+    ['linearization' => 20],
     ['lzw' => 2],
     ['pngpredictor' => 1],
     ['runlength' => 6],

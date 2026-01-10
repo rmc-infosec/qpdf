@@ -16,6 +16,7 @@ set(FUZZERS
   hex_fuzzer
   job_fuzzer
   json_fuzzer
+  linearization_fuzzer
   lzw_fuzzer
   pngpredictor_fuzzer
   runlength_fuzzer

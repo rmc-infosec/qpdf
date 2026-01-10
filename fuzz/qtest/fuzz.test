@@ -24,6 +24,7 @@ my @fuzzers = (
     ['pngpredictor' => 1],
     ['runlength' => 6],
     ['tiffpredictor' => 2],
+    ['transform' => 12],
     ['qpdf' => $n_qpdf_files],
     ['qpdf_crypt' => $n_qpdf_files],
     ['qpdf_crypt_insecure' => $n_qpdf_files],

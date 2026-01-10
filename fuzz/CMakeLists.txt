@@ -17,7 +17,8 @@ set(FUZZERS
   lzw_fuzzer
   pngpredictor_fuzzer
   runlength_fuzzer
-  tiffpredictor_fuzzer)
+  tiffpredictor_fuzzer
+  transform_fuzzer)
 
 # The oss-fuzz project provides LIB_FUZZING_ENGINE and OUT environment
 # variables. For local testing, provide values if not set.

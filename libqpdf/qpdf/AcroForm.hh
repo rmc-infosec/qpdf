@@ -166,7 +166,8 @@ namespace qpdf::impl
             std::set<QPDFObjGen>& old_fields,
             QPDFMatrix const& cm,
             QPDF* from_qpdf,
-            AcroForm* from_afdh);
+            AcroForm* from_afdh,
+            QPDFObjectHandle* new_page);
 
         // Copy form fields and annotations from one page to another, allowing the from page to be
         // in a different QPDF or in the same QPDF. This would typically be called after calling
@@ -766,11 +767,16 @@ namespace qpdf::impl
             return {qpdf() ? qpdf()->getRoot()["/AcroForm"][name] : null_oh};
         }
 
-        void setRadioButtonValue(QPDFObjectHandle name);
+        /// @brief Sets the value of a radio button field.
+        ///
+        /// This method updates the value of a radio button field to the specified name.
+        /// It ensures that the radio button's state is consistent with the provided value.
+        ///
+        /// @param name The name of the radio button value to set. This corresponds to the
+        ///             appearance state name of the selected radio button.
+        void setRadioButtonValue(Name const& name);
         void setCheckBoxValue(bool value);
         void generateTextAppearance(QPDFAnnotationObjectHelper&);
-        QPDFObjectHandle
-        getFontFromResource(QPDFObjectHandle resources, std::string const& font_name);
 
         static const QPDFObjectHandle null_oh;
     }; // class FormNode

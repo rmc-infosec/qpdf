@@ -1,50 +1,30 @@
-#include <qpdf/Pl_Discard.hh>
-#include <qpdf/Pl_LZWDecoder.hh>
-#include <iostream>
-#include <stdexcept>
+#include "fuzz_common.hh"
 
-class FuzzHelper
+#include <qpdf/Pl_LZWDecoder.hh>
+
+class LZWFuzzHelper: public fuzz::FilterFuzzHelper
 {
   public:
-    FuzzHelper(unsigned char const* data, size_t size);
-    void run();
-
-  private:
-    void doChecks();
-
-    unsigned char const* data;
-    size_t size;
-};
-
-FuzzHelper::FuzzHelper(unsigned char const* data, size_t size) :
-    data(data),
-    size(size)
-{
-}
-
-void
-FuzzHelper::doChecks()
-{
-    Pl_Discard discard;
-    Pl_LZWDecoder p("decode", &discard, false);
-    p.write(const_cast<unsigned char*>(data), size);
-    p.finish();
-}
-
-void
-FuzzHelper::run()
-{
-    try {
-        doChecks();
-    } catch (std::runtime_error const& e) {
-        std::cerr << "runtime_error: " << e.what() << '\n';
+    LZWFuzzHelper(unsigned char const* data, size_t size) :
+        FilterFuzzHelper(data, size)
+    {
     }
-}
+
+  protected:
+    void
+    test() override
+    {
+        Pl_Discard discard;
+        Pl_LZWDecoder p("decode", &discard, false);
+        p.write(const_cast<unsigned char*>(data_), size_);
+        p.finish();
+    }
+};
 
 extern "C" int
 LLVMFuzzerTestOneInput(unsigned char const* data, size_t size)
 {
-    FuzzHelper f(data, size);
+    LZWFuzzHelper f(data, size);
     f.run();
     return 0;
 }

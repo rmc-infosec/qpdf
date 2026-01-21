@@ -1,259 +1,196 @@
 // Fuzzer for annotation handling operations
 // Targets transformAnnotations, fixCopiedAnnotations, and annotation helpers
 
-#include <qpdf/Buffer.hh>
-#include <qpdf/BufferInputSource.hh>
-#include <qpdf/Pl_DCT.hh>
-#include <qpdf/Pl_Discard.hh>
-#include <qpdf/Pl_Flate.hh>
-#include <qpdf/Pl_PNGFilter.hh>
-#include <qpdf/Pl_RunLength.hh>
-#include <qpdf/Pl_TIFFPredictor.hh>
-#include <qpdf/QPDF.hh>
+#include "fuzz_common.hh"
+
 #include <qpdf/QPDFAcroFormDocumentHelper.hh>
 #include <qpdf/QPDFAnnotationObjectHelper.hh>
 #include <qpdf/QPDFPageDocumentHelper.hh>
 #include <qpdf/QPDFPageObjectHelper.hh>
-#include <qpdf/QPDFWriter.hh>
 
-#include <cstdlib>
-#include <iostream>
 #include <set>
 #include <vector>
 
-class FuzzHelper
+class AnnotFuzzHelper: public fuzz::PDFFuzzHelper
 {
   public:
-    FuzzHelper(unsigned char const* data, size_t size);
-    void run();
+    AnnotFuzzHelper(unsigned char const* data, size_t size) :
+        PDFFuzzHelper(data, size)
+    {
+    }
+
+  protected:
+    void
+    test() override
+    {
+        std::cerr << "\ninfo: starting test_annotations\n";
+        test_annotations();
+    }
 
   private:
-    std::shared_ptr<QPDF> getQpdf();
-    void testAnnotations();
-    void doChecks();
+    void
+    test_annotations()
+    {
+        QPDF qpdf;
+        load_pdf(qpdf);
+        QPDFPageDocumentHelper pdh(qpdf);
+        QPDFAcroFormDocumentHelper afdh(qpdf);
 
-    Buffer input_buffer;
-    Pl_Discard discard;
-};
-
-FuzzHelper::FuzzHelper(unsigned char const* data, size_t size) :
-    input_buffer(const_cast<unsigned char*>(data), size)
-{
-}
-
-std::shared_ptr<QPDF>
-FuzzHelper::getQpdf()
-{
-    auto is =
-        std::shared_ptr<InputSource>(new BufferInputSource("fuzz input", &this->input_buffer));
-    auto qpdf = QPDF::create();
-    qpdf->setMaxWarnings(200);
-    qpdf->processInputSource(is);
-    return qpdf;
-}
-
-void
-FuzzHelper::testAnnotations()
-{
-    std::shared_ptr<QPDF> q = getQpdf();
-    QPDFPageDocumentHelper pdh(*q);
-    QPDFAcroFormDocumentHelper afdh(*q);
-
-    auto pages = pdh.getAllPages();
-    if (pages.empty()) {
-        return;
-    }
-
-    // Test annotation operations on each page
-    int pageno = 0;
-    for (auto& page: pages) {
-        ++pageno;
-        if (pageno > 5) {
-            break; // Limit pages to avoid timeouts
+        auto pages = pdh.getAllPages();
+        if (pages.empty()) {
+            return;
         }
 
-        try {
-            std::cerr << "info: processing page " << pageno << '\n';
-
-            // Get all annotations on the page
-            std::cerr << "info: getAnnotations (all)\n";
-            auto all_annots = page.getAnnotations();
-
-            // Get specific annotation types
-            std::cerr << "info: getAnnotations (Link)\n";
-            page.getAnnotations("Link");
-
-            std::cerr << "info: getAnnotations (Widget)\n";
-            auto widget_annots = page.getAnnotations("Widget");
-
-            std::cerr << "info: getAnnotations (Text)\n";
-            page.getAnnotations("Text");
-
-            // Test annotation object helper on each annotation
-            for (auto& annot: all_annots) {
-                std::cerr << "info: testing annotation helper\n";
-
-                // Get annotation properties
-                annot.getSubtype();
-                annot.getAppearanceState();
-                annot.getAppearanceDictionary();
-
-                // Get flags
-                annot.getFlags();
+        // Test annotation operations on each page
+        int pageno = 0;
+        for (auto& page : pages) {
+            ++pageno;
+            if (pageno > 5) {
+                break; // Limit pages to avoid timeouts
             }
 
-            // Test widget annotations with form helper
-            for (auto& widget: widget_annots) {
-                std::cerr << "info: getFieldForAnnotation\n";
-                auto field = afdh.getFieldForAnnotation(widget);
-            }
+            try {
+                info("processing page", pageno);
 
-        } catch (QPDFExc const& e) {
-            std::cerr << "page " << pageno << " QPDFExc: " << e.what() << '\n';
-        } catch (std::runtime_error const& e) {
-            std::cerr << "page " << pageno << " runtime_error: " << e.what() << '\n';
+                // Get all annotations on the page
+                info("getAnnotations (all)");
+                auto all_annots = page.getAnnotations();
+
+                // Get specific annotation types
+                info("getAnnotations (Link)");
+                page.getAnnotations("Link");
+
+                info("getAnnotations (Widget)");
+                auto widget_annots = page.getAnnotations("Widget");
+
+                info("getAnnotations (Text)");
+                page.getAnnotations("Text");
+
+                // Test annotation object helper on each annotation
+                for (auto& annot : all_annots) {
+                    info("testing annotation helper");
+
+                    // Get annotation properties
+                    annot.getSubtype();
+                    annot.getAppearanceState();
+                    annot.getAppearanceDictionary();
+
+                    // Get flags
+                    annot.getFlags();
+                }
+
+                // Test widget annotations with form helper
+                for (auto& widget : widget_annots) {
+                    info("getFieldForAnnotation");
+                    afdh.getFieldForAnnotation(widget);
+                }
+
+            } catch (std::runtime_error const& e) {
+                std::cerr << "page " << pageno << ": " << e.what() << '\n';
+            }
         }
-    }
 
-    // Test transformAnnotations if we have at least 2 pages
-    if (pages.size() >= 2) {
-        try {
-            std::cerr << "info: transformAnnotations\n";
+        // Test transformAnnotations if we have at least 2 pages
+        if (pages.size() >= 2) {
+            try {
+                auto& from_page = pages[0];
+                auto& to_page = pages[1];
 
-            auto& from_page = pages[0];
-            auto& to_page = pages[1];
+                // Get /Annots array from the source page
+                auto from_page_obj = from_page.getObjectHandle();
+                auto annots = from_page_obj.getKey("/Annots");
 
-            std::vector<QPDFObjectHandle> new_annots;
-            std::vector<QPDFObjectHandle> new_fields;
-            std::set<QPDFObjGen> old_fields;
+                if (annots.isArray()) {
+                    info("transformAnnotations");
 
-            // Get transformation matrix
-            auto matrix = from_page.getMatrixForTransformations();
+                    std::vector<QPDFObjectHandle> new_annots;
+                    std::vector<QPDFObjectHandle> new_fields;
+                    std::set<QPDFObjGen> old_fields;
 
-            // Transform annotations from one page to another
-            afdh.transformAnnotations(
-                from_page.getObjectHandle(),
-                new_annots,
-                new_fields,
-                old_fields,
-                matrix);
+                    // Get transformation matrix
+                    auto matrix = from_page.getMatrixForTransformations();
 
-            std::cerr << "info: transformAnnotations produced " << new_annots.size()
-                      << " annotations\n";
+                    // Transform annotations from one page to another
+                    afdh.transformAnnotations(annots, new_annots, new_fields, old_fields, matrix);
 
-            // Test fixCopiedAnnotations
-            if (!new_annots.empty()) {
-                std::cerr << "info: fixCopiedAnnotations\n";
+                    info("transformAnnotations produced " + std::to_string(new_annots.size()) +
+                         " annotations");
+                }
+
+                // Test fixCopiedAnnotations (works on pages directly)
+                info("fixCopiedAnnotations");
                 std::set<QPDFObjGen> fields_set;
                 afdh.fixCopiedAnnotations(
-                    to_page.getObjectHandle(), from_page.getObjectHandle(), afdh, &fields_set);
+                    to_page.getObjectHandle(), from_page_obj, afdh, &fields_set);
+
+            } catch (std::runtime_error const& e) {
+                std::cerr << "transform: " << e.what() << '\n';
+            }
+        }
+
+        // Test AcroForm validation and operations
+        try {
+            info("afdh operations");
+
+            // Validate form structure
+            afdh.validate(true);
+
+            // Get form fields
+            auto fields = afdh.getFormFields();
+            info("found " + std::to_string(fields.size()) + " form fields");
+
+            // Test each form field
+            int field_count = 0;
+            for (auto& field : fields) {
+                ++field_count;
+                if (field_count > 10) {
+                    break;
+                }
+
+                // Get field properties
+                field.getFieldType();
+                field.getFullyQualifiedName();
+                field.getPartialName();
+                field.getValue();
+                field.getDefaultValue();
+                field.getValueAsString();
+                field.getDefaultValueAsString();
+                field.isText();
+                field.isCheckbox();
+                field.isRadioButton();
+                field.isChoice();
+
+                // Get annotations for field
+                afdh.getAnnotationsForField(field);
             }
 
-        } catch (QPDFExc const& e) {
-            std::cerr << "transform QPDFExc: " << e.what() << '\n';
+            // Test need appearances
+            afdh.getNeedAppearances();
+            afdh.setNeedAppearances(false);
+
+            // Disable digital signatures (exercises signature handling code)
+            info("disableDigitalSignatures");
+            afdh.disableDigitalSignatures();
+
         } catch (std::runtime_error const& e) {
-            std::cerr << "transform runtime_error: " << e.what() << '\n';
-        }
-    }
-
-    // Test AcroForm validation and operations
-    try {
-        std::cerr << "info: afdh operations\n";
-
-        // Validate form structure
-        afdh.validate(true);
-
-        // Get form fields
-        auto fields = afdh.getFormFields();
-        std::cerr << "info: found " << fields.size() << " form fields\n";
-
-        // Test each form field
-        int field_count = 0;
-        for (auto& field: fields) {
-            ++field_count;
-            if (field_count > 10) {
-                break;
-            }
-
-            // Get field properties
-            field.getFieldType();
-            field.getFullyQualifiedName();
-            field.getPartialName();
-            field.getValue();
-            field.getDefaultValue();
-            field.getValueAsString();
-            field.getDefaultValueAsString();
-            field.isText();
-            field.isCheckbox();
-            field.isRadioButton();
-            field.isChoice();
-
-            // Get annotations for field
-            afdh.getAnnotationsForField(field);
+            std::cerr << "afdh: " << e.what() << '\n';
         }
 
-        // Test need appearances
-        afdh.getNeedAppearances();
-        afdh.setNeedAppearances(false);
-
-        // Disable digital signatures (exercises signature handling code)
-        std::cerr << "info: disableDigitalSignatures\n";
-        afdh.disableDigitalSignatures();
-
-    } catch (QPDFExc const& e) {
-        std::cerr << "afdh QPDFExc: " << e.what() << '\n';
-    } catch (std::runtime_error const& e) {
-        std::cerr << "afdh runtime_error: " << e.what() << '\n';
+        // Write output
+        try {
+            info("writing output");
+            write_pdf(qpdf, [](QPDFWriter& w) { w.setDeterministicID(true); });
+        } catch (std::runtime_error const& e) {
+            std::cerr << "write: " << e.what() << '\n';
+        }
     }
-
-    // Write output
-    try {
-        std::cerr << "info: writing output\n";
-        QPDFWriter w(*q);
-        w.setOutputPipeline(&discard);
-        w.setDeterministicID(true);
-        w.write();
-    } catch (QPDFExc const& e) {
-        std::cerr << "write QPDFExc: " << e.what() << '\n';
-    } catch (std::runtime_error const& e) {
-        std::cerr << "write runtime_error: " << e.what() << '\n';
-    }
-}
-
-void
-FuzzHelper::doChecks()
-{
-    Pl_DCT::setMemoryLimit(100'000'000);
-    Pl_DCT::setScanLimit(50);
-    Pl_PNGFilter::setMemoryLimit(1'000'000);
-    Pl_RunLength::setMemoryLimit(1'000'000);
-    Pl_TIFFPredictor::setMemoryLimit(1'000'000);
-    Pl_Flate::memory_limit(200'000);
-    Pl_DCT::setThrowOnCorruptData(true);
-
-    std::cerr << "\ninfo: starting testAnnotations\n";
-    testAnnotations();
-}
-
-void
-FuzzHelper::run()
-{
-    try {
-        doChecks();
-    } catch (QPDFExc const& e) {
-        std::cerr << "QPDFExc: " << e.what() << '\n';
-    } catch (std::runtime_error const& e) {
-        std::cerr << "runtime_error: " << e.what() << '\n';
-    }
-}
+};
 
 extern "C" int
 LLVMFuzzerTestOneInput(unsigned char const* data, size_t size)
 {
-#ifndef _WIN32
-    setenv("JSIMD_FORCENONE", "1", 1);
-#endif
-    FuzzHelper f(data, size);
+    fuzz_init();
+    AnnotFuzzHelper f(data, size);
     f.run();
     return 0;
 }

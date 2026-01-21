@@ -1,58 +1,39 @@
-#include "qpdf/JSON.hh"
-#include "qpdf/QPDF.hh"
-#include <qpdf/BufferInputSource.hh>
-#include <qpdf/Pl_Discard.hh>
-#include <iostream>
-#include <stdexcept>
+#include "fuzz_common.hh"
 
-class FuzzHelper
+#include <qpdf/JSON.hh>
+
+class JSONFuzzHelper: public fuzz::FilterFuzzHelper
 {
   public:
-    FuzzHelper(unsigned char const* data, size_t size);
-    void run();
+    JSONFuzzHelper(unsigned char const* data, size_t size) :
+        FilterFuzzHelper(data, size)
+    {
+    }
 
-  private:
-    void doChecks();
+  protected:
+    void
+    test() override
+    {
+        // Test JSON parsing
+        try {
+            JSON::parse(std::string(reinterpret_cast<char const*>(data_), size_));
+        } catch (std::runtime_error& e) {
+            std::cerr << "runtime_error parsing json: " << e.what() << '\n';
+        }
 
-    unsigned char const* data;
-    size_t size;
+        // Test creating QPDF from JSON
+        QPDF qpdf;
+        qpdf.setMaxWarnings(1000);
+        Buffer buf(const_cast<unsigned char*>(data_), size_);
+        auto is = std::make_shared<BufferInputSource>("json", &buf);
+        qpdf.createFromJSON(is);
+    }
 };
-
-FuzzHelper::FuzzHelper(unsigned char const* data, size_t size) :
-    data(data),
-    size(size)
-{
-}
-
-void
-FuzzHelper::doChecks()
-{
-    try {
-        JSON::parse(std::string(reinterpret_cast<char const*>(data), size));
-    } catch (std::runtime_error& e) {
-        std::cerr << "runtime_error parsing json: " << e.what() << '\n';
-    }
-    QPDF q;
-    q.setMaxWarnings(1000);
-    Buffer buf(const_cast<unsigned char*>(data), size);
-    auto is = std::make_shared<BufferInputSource>("json", &buf);
-    q.createFromJSON(is);
-}
-
-void
-FuzzHelper::run()
-{
-    try {
-        doChecks();
-    } catch (std::runtime_error const& e) {
-        std::cerr << "runtime_error: " << e.what() << '\n';
-    }
-}
 
 extern "C" int
 LLVMFuzzerTestOneInput(unsigned char const* data, size_t size)
 {
-    FuzzHelper f(data, size);
+    JSONFuzzHelper f(data, size);
     f.run();
     return 0;
 }

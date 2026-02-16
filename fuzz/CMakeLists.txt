@@ -232,10 +232,21 @@ if(OSS_FUZZ)
     DESTINATION ${FUZZ_OUT}
     EXCLUDE_FROM_ALL
     COMPONENT fuzz)
+  set(FUZZ_AUX_FILES ${CMAKE_CURRENT_SOURCE_DIR}/pdf.dict)
+  foreach(F ${FUZZERS})
+    set(F_OPTIONS ${CMAKE_CURRENT_SOURCE_DIR}/${F}.options)
+    if(EXISTS "${F_OPTIONS}")
+      list(APPEND FUZZ_AUX_FILES ${F_OPTIONS})
+    endif()
+    set(F_DICT ${CMAKE_CURRENT_SOURCE_DIR}/${F}.dict)
+    if(EXISTS "${F_DICT}")
+      list(APPEND FUZZ_AUX_FILES ${F_DICT})
+    endif()
+  endforeach()
+  list(REMOVE_DUPLICATES FUZZ_AUX_FILES)
   install(
     FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/pdf.dict
-    ${CMAKE_CURRENT_SOURCE_DIR}/qpdf_fuzzer.options
+    ${FUZZ_AUX_FILES}
     ${SEED_CORPUS_ZIPS}
     DESTINATION ${FUZZ_OUT}
     EXCLUDE_FROM_ALL
